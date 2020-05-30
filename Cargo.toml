@@ -1,0 +1,11 @@
+[package]
+name = "hello-rocket"
+version = "0.1.0"
+authors = ["ModZero <modzero@modzero.xyz>"]
+edition = "2018"
+license = "AGPL-3.0-or-later"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rocket = "0.4.4"
