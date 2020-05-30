@@ -1,5 +1,5 @@
 [package]
-name = "hello-rocket"
+name = "carrier-signal"
 version = "0.1.0"
 authors = ["ModZero <modzero@modzero.xyz>"]
 edition = "2018"
