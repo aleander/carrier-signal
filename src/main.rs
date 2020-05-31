@@ -5,8 +5,6 @@ extern crate rocket;
 extern crate serde;
 
 use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
 
 use rocket::State as RocketState;
 use rocket_contrib::templates::Template;
@@ -29,15 +27,7 @@ fn simulation(s: WrappedState) {
     std::thread::spawn(move || {
         let mut simulation = Simulation::new();
 
-        loop {
-            simulation.update();
-            {
-                let mut state = s.lock().unwrap();
-                (*state).iteration += 1;
-                (*state).objects = simulation.render();
-            }
-            thread::sleep(Duration::from_secs(1))
-        }
+        simulation.run(s);
     });
 }
 

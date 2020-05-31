@@ -1,7 +1,10 @@
+use std::thread;
+use std::time::Duration;
+
 use legion::prelude::*;
 use rand::prelude::*;
 
-use crate::state::Object;
+use crate::state::{WrappedState, Object};
 
 #[derive(Clone, Debug, PartialEq)]
 struct Name {
@@ -21,7 +24,7 @@ struct Velocity {
 }
 
 pub struct Simulation {
-    world: World
+    world: World,
 }
 
 impl Simulation {
@@ -55,7 +58,7 @@ impl Simulation {
         }
     }
 
-    pub fn render(&mut self) -> Vec<Object> {
+    fn render(&mut self) -> Vec<Object> {
         let mut result: Vec<Object> = vec![];
 
         for (name, pos) in <(Read<Name>, Read<Position>)>::query().iter(&mut self.world) {
@@ -63,5 +66,17 @@ impl Simulation {
         }
 
         result
+    }
+
+    pub fn run(&mut self, wrapped_state: WrappedState) {
+        loop {
+            self.update();
+            {
+                let mut state = wrapped_state.lock().unwrap();
+                (*state).iteration += 1;
+                (*state).objects = self.render();
+            }
+            thread::sleep(Duration::from_secs(1))
+        }
     }
 }
