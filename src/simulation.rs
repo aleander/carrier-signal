@@ -1,6 +1,7 @@
 use legion::prelude::*;
 use rand::prelude::*;
-use serde::Serialize;
+
+use crate::state::Object;
 
 #[derive(Clone, Debug, PartialEq)]
 struct Name {
@@ -21,13 +22,6 @@ struct Velocity {
 
 pub struct Simulation {
     world: World
-}
-
-#[derive(Clone, Serialize)]
-pub struct Object {
-    pub name: String,
-    pub x: f64,
-    pub y: f64,
 }
 
 impl Simulation {

@@ -4,28 +4,21 @@
 extern crate rocket;
 extern crate serde;
 
-mod simulation;
-
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use rocket::State;
+use rocket::State as RocketState;
 use rocket_contrib::templates::Template;
-use serde::Serialize;
 
-use simulation::{Object, Simulation};
+mod simulation;
+mod state;
 
-#[derive(Clone, Serialize)]
-struct SimState {
-    pub iteration: u64,
-    pub objects: Vec<Object>
-}
-
-type WrappedState = Arc<Mutex<SimState>>;
+use simulation::Simulation;
+use state::{State, WrappedState};
 
 #[get("/")]
-fn index(sim: State<WrappedState>) -> Template {
+fn index(sim: RocketState<WrappedState>) -> Template {
     let state = sim.lock().unwrap();
 
     
@@ -49,7 +42,7 @@ fn simulation(s: WrappedState) {
 }
 
 fn main() {
-    let state = Arc::new(Mutex::new(SimState {
+    let state = Arc::new(Mutex::new(State {
         iteration: 0, objects: vec![]
     }));
 
