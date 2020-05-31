@@ -29,7 +29,7 @@ pub struct Object {
 }
 
 impl Simulation {
-    pub fn new() -> Simulation {
+    pub fn new() -> Self {
         let universe = Universe::new();
         let mut world = universe.create_world();
         let mut rng = thread_rng();
@@ -48,7 +48,7 @@ impl Simulation {
             }),
         );
     
-        Simulation {world}
+        Self {world}
     }
 
     pub fn update(&mut self) {
