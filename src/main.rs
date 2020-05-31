@@ -2,19 +2,21 @@
 
 #[macro_use]
 extern crate rocket;
+extern crate serde;
 
 mod simulation;
 
-use std::fmt::Write as FmtWrite;
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use rocket::State;
+use rocket_contrib::templates::Template;
+use serde::Serialize;
 
 use simulation::{Object, Simulation};
 
-
+#[derive(Clone, Serialize)]
 struct SimState {
     pub iteration: u64,
     pub objects: Vec<Object>
@@ -23,18 +25,11 @@ struct SimState {
 type WrappedState = Arc<Mutex<SimState>>;
 
 #[get("/")]
-fn index(sim: State<WrappedState>) -> String {
+fn index(sim: State<WrappedState>) -> Template {
     let state = sim.lock().unwrap();
 
-    let mut result = String::from("Hello, world!\n");
     
-    write!(&mut result, "Iteration {}\n", (*state).iteration).unwrap();
-
-    for object in &(*state).objects {
-        write!(&mut result, "Object {} at {}, {}\n", object.name, object.x, object.y).unwrap();
-    }
-
-    result
+    Template::render("stuff", state.clone())
 }
 
 fn simulation(s: WrappedState) {
@@ -61,6 +56,7 @@ fn main() {
     simulation(Arc::clone(&state));
 
     rocket::ignite()
+        .attach(Template::fairing())
         .manage(Arc::clone(&state))
         .mount("/", routes![index])
         .launch();

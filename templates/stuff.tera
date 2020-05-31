@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Blab</title>
+    </head>
+    <body>
+        <h1>Hello, world!</h1>
+        <ul>
+        {% for object in objects %}
+            <li>{{ object.name }} @ {{ object.x }}, {{ object.y }}</li>
+        {% endfor %}
+        </ul>
+    </body>
+</html>

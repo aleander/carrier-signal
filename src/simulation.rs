@@ -1,5 +1,6 @@
 use legion::prelude::*;
 use rand::prelude::*;
+use serde::Serialize;
 
 #[derive(Clone, Debug, PartialEq)]
 struct Name {
@@ -22,6 +23,7 @@ pub struct Simulation {
     world: World
 }
 
+#[derive(Clone, Serialize)]
 pub struct Object {
     pub name: String,
     pub x: f64,
