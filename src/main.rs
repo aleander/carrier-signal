@@ -4,7 +4,7 @@
 extern crate rocket;
 extern crate serde;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 use rocket::State as RocketState;
 use rocket_contrib::templates::Template;
@@ -13,7 +13,7 @@ mod simulation;
 mod state;
 
 use simulation::Simulation;
-use state::{State, WrappedState};
+use state::WrappedState;
 
 #[get("/")]
 fn index(sim: RocketState<WrappedState>) -> Template {
@@ -23,24 +23,17 @@ fn index(sim: RocketState<WrappedState>) -> Template {
     Template::render("stuff", state.clone())
 }
 
-fn simulation(s: WrappedState) {
-    std::thread::spawn(move || {
-        let mut simulation = Simulation::new();
-
-        simulation.run(s);
-    });
-}
-
 fn main() {
-    let state = Arc::new(Mutex::new(State {
-        iteration: 0, objects: vec![]
-    }));
+    let mut simulation = Simulation::new();
+    let state = Arc::clone(&simulation.state);
 
-    simulation(Arc::clone(&state));
+    std::thread::spawn(move || {
+        simulation.run();
+    });
 
     rocket::ignite()
         .attach(Template::fairing())
-        .manage(Arc::clone(&state))
+        .manage(state)
         .mount("/", routes![index])
         .launch();
 }
