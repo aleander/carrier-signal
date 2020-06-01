@@ -6,7 +6,8 @@
 
     <body>
         <h1>Hello, world!</h1>
-        <ul>
+        <p id="iteration">Iteration: {{ iteration }}<p>
+        <ul id="objects">
         {% for object in objects %}
             <li>{{ object.name }} @ {{ object.x }}, {{ object.y }}</li>
         {% endfor %}
@@ -21,7 +22,17 @@
             }
 
             ws.onmessage = function(e) {
-                console.log("From Server:" + e.data);
+                const data = JSON.parse(e.data);
+
+                document.getElementById("iteration").innerText = `Iteration: ${data.iteration}`;
+                const ul = document.getElementById("objects");
+                while(ul.firstChild) { ul.removeChild(ul.lastChild) }
+                for (n in data.objects) {
+                    const ob = data.objects[n];
+                    const li = document.createElement("li");
+                    li.innerText = `${ob.name} @ ${ob.x}, ${ob.y}`;
+                    ul.append(li);
+                }
             };
         </script>
     </body>
