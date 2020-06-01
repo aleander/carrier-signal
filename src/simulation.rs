@@ -1,27 +1,23 @@
 use std::time::{Duration, Instant};
 
 use legion::prelude::*;
+use nalgebra::{Vector3, Point3};
 use rand::prelude::*;
 use tokio::{sync::watch, time};
 
 use crate::state::{Object, State};
 
 #[derive(Clone, Debug, PartialEq)]
-struct Name {
-    name: String,
-}
+struct Name (String);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Position {
-    x: f64,
-    y: f64,
-}
+#[derive(Clone, Debug, PartialEq)]
+struct Id (u64);
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-struct Velocity {
-    dx: f64,
-    dy: f64,
-}
+#[derive(Clone, Debug, PartialEq)]
+struct Position (Point3<f64>);
+
+#[derive(Clone, Debug, PartialEq)]
+struct Velocity (Vector3<f64>);
 
 pub struct Simulation {
     world: World,
@@ -34,11 +30,13 @@ pub struct Simulation {
 fn render(world: &mut World) -> Vec<Object> {
     let mut result = vec![];
 
-    for (name, pos) in <(Read<Name>, Read<Position>)>::query().iter(world) {
+    for (id, name, pos) in <(Read<Id>, Read<Name>, Read<Position>)>::query().iter(world) {
         result.push(Object {
-            name: name.name.clone(),
-            x: pos.x,
-            y: pos.y,
+            id: id.0,
+            name: name.0.clone(),
+            x: pos.0.x,
+            y: pos.0.y,
+            z: pos.0.z
         });
     }
 
@@ -55,14 +53,14 @@ impl Simulation {
             (),
             (0..999).map(|n| {
                 (
-                    Name {
-                        name: format!("Entity {}", n),
-                    },
-                    Position { x: 0.0, y: 0.0 },
-                    Velocity {
-                        dx: rng.gen_range(0.0, 1.0),
-                        dy: rng.gen_range(0.0, 1.0),
-                    },
+                    Id(n),
+                    Name (format!("Entity {}", n)),
+                    Position(Point3::new(0.0, 0.0, 0.0)),
+                    Velocity(Vector3::new(
+                        rng.gen_range(-1.0, 1.0),
+                        rng.gen_range(-1.0, 1.0),
+                        rng.gen_range(-1.0, 1.0),
+                    )),
                 )
             }),
         );
@@ -80,8 +78,7 @@ impl Simulation {
         let now = Instant::now();
         let dt = now.duration_since(self.last);
         for (mut pos, vel) in update_query.iter(&mut self.world) {
-            pos.x += vel.dx * dt.as_secs_f64();
-            pos.y += vel.dy * dt.as_secs_f64();
+            pos.0 += vel.0 * dt.as_secs_f64();
         }
         self.last = now;
         self.iteration += 1;
