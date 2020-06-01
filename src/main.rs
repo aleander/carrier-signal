@@ -1,39 +1,19 @@
-#![feature(proc_macro_hygiene, decl_macro)]
-
-#[macro_use]
-extern crate rocket;
-extern crate serde;
-
-use std::sync::Arc;
-
-use rocket::State as RocketState;
-use rocket_contrib::templates::Template;
-
 mod simulation;
 mod state;
 
 use simulation::Simulation;
-use state::WrappedState;
 
-#[get("/")]
-fn index(sim: RocketState<WrappedState>) -> Template {
-    let state = sim.lock().unwrap();
-
-    
-    Template::render("stuff", state.clone())
-}
-
-fn main() {
+#[tokio::main]
+async fn main() {
     let mut simulation = Simulation::new();
-    let state = Arc::clone(&simulation.state);
-
-    std::thread::spawn(move || {
-        simulation.run();
+    let mut state_channel = simulation.state();
+    
+    tokio::spawn(async move {
+        simulation.run().await;
     });
 
-    rocket::ignite()
-        .attach(Template::fairing())
-        .manage(state)
-        .mount("/", routes![index])
-        .launch();
+    loop {
+        let state = state_channel.recv().await.unwrap();
+        println!("Iteration {}", state.iteration)
+    }
 }

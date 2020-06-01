@@ -1,12 +1,10 @@
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
-
+use std::time::{Duration, Instant};
 
 use legion::prelude::*;
 use rand::prelude::*;
+use tokio::{sync::watch, time};
 
-use crate::state::{State, WrappedState, Object};
+use crate::state::{Object, State};
 
 #[derive(Clone, Debug, PartialEq)]
 struct Name {
@@ -27,7 +25,24 @@ struct Velocity {
 
 pub struct Simulation {
     world: World,
-    pub state: WrappedState,
+    iteration: u64,
+    last: Instant,
+    tx: watch::Sender<State>,
+    rx: watch::Receiver<State>,
+}
+
+fn render(world: &mut World) -> Vec<Object> {
+    let mut result = vec![];
+
+    for (name, pos) in <(Read<Name>, Read<Position>)>::query().iter(world) {
+        result.push(Object {
+            name: name.name.clone(),
+            x: pos.x,
+            y: pos.y,
+        });
+    }
+
+    result
 }
 
 impl Simulation {
@@ -35,12 +50,14 @@ impl Simulation {
         let universe = Universe::new();
         let mut world = universe.create_world();
         let mut rng = thread_rng();
-    
+
         world.insert(
             (),
             (0..999).map(|n| {
                 (
-                    Name { name: format!("Entity {}", n)},
+                    Name {
+                        name: format!("Entity {}", n),
+                    },
                     Position { x: 0.0, y: 0.0 },
                     Velocity {
                         dx: rng.gen_range(0.0, 1.0),
@@ -49,41 +66,47 @@ impl Simulation {
                 )
             }),
         );
-    
-        let mut result = Self {world, state: Arc::new(Mutex::new(State {
-            iteration: 0, objects: vec![]
-        }))};
 
-        result.render();
-
-        result
+        let (tx, rx) = watch::channel(State {
+            iteration: 0,
+            objects: render(&mut world),
+        });
+        
+        Self { world, last: Instant::now(), iteration: 0, tx, rx }
     }
 
-    pub fn update(&mut self) {
+    fn update(&mut self) {
         let update_query = <(Write<Position>, Read<Velocity>)>::query();
+        let now = Instant::now();
+        let dt = now.duration_since(self.last);
         for (mut pos, vel) in update_query.iter(&mut self.world) {
-            pos.x += vel.dx;
-            pos.y += vel.dy;
+            pos.x += vel.dx * dt.as_secs_f64();
+            pos.y += vel.dy * dt.as_secs_f64();
         }
-        self.state.lock().unwrap().iteration += 1;
+        self.last = now;
+        self.iteration += 1;
     }
 
-    fn render(&mut self) {
-        let mut state = self.state.lock().unwrap();
-
-        state.objects = vec![];
-
-        for (name, pos) in <(Read<Name>, Read<Position>)>::query().iter(&mut self.world) {
-            state.objects.push(Object{ name: name.name.clone(), x: pos.x, y: pos.y });
+    fn render(&mut self) -> State {
+        State {
+            iteration: self.iteration,
+            objects: render(&mut self.world),
         }
     }
 
-    pub fn run(&mut self) {
+    pub async fn run(&mut self) {
+        let mut interval = time::interval(Duration::from_millis(1000 / 60));
+
         loop {
             self.update();
-            self.render();
+            let state = self.render();
+            self.tx.broadcast(state).unwrap();
 
-            thread::sleep(Duration::from_secs(1))
+            interval.tick().await;
         }
+    }
+
+    pub fn state(&mut self) -> watch::Receiver<State> {
+        self.rx.clone()
     }
 }
