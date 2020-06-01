@@ -1,11 +1,14 @@
-
-use std::sync::Arc;
+use std::{sync::Arc, time::Duration};
 
 use futures::{SinkExt, StreamExt};
 use serde_json::json;
 use tera::{Context, Tera};
-use tokio::sync::watch;
-use warp::{Filter, reject::Reject, Rejection, ws::{Message, WebSocket}};
+use tokio::{sync::watch, time::throttle};
+use warp::{
+    reject::Reject,
+    ws::{Message, WebSocket},
+    Filter, Rejection,
+};
 
 use crate::state::State;
 
@@ -54,22 +57,22 @@ struct WithTemplate {
 }
 
 async fn watch_state(ws: WebSocket, mut state_channel: watch::Receiver<State>) {
-    let (mut tx, mut rx) = ws.split();
+    let (mut tx, rx) = ws.split();
+    let mut rx = throttle(Duration::from_millis(1000 / 30), rx);
 
     while let Some(_) = rx.next().await {
         let state = state_channel.recv().await;
 
         let result = match state {
             Some(state) => tx.send(Message::text(json!(state).to_string())).await,
-            None => break
+            None => break,
         };
 
         if let Err(_) = result {
             break;
         }
-    };
+    }
 }
-
 
 #[derive(Debug)]
 struct SimulationUnavailable;
@@ -79,7 +82,7 @@ impl Reject for SimulationUnavailable {}
 async fn get_state(mut channel: watch::Receiver<State>) -> Result<State, Rejection> {
     match channel.recv().await {
         Some(state) => Ok(state),
-        None => Err(warp::reject::custom(SimulationUnavailable))
+        None => Err(warp::reject::custom(SimulationUnavailable)),
     }
 }
 
