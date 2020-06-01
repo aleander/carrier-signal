@@ -3,6 +3,7 @@
     <head>
         <title>Blab</title>
     </head>
+
     <body>
         <h1>Hello, world!</h1>
         <ul>
@@ -10,5 +11,18 @@
             <li>{{ object.name }} @ {{ object.x }}, {{ object.y }}</li>
         {% endfor %}
         </ul>
+
+        
+        <script>
+            ws = new WebSocket("ws://localhost:3030/state");
+
+            ws.onopen = function() {
+                console.log("Connected");
+            }
+
+            ws.onmessage = function(e) {
+                console.log("From Server:" + e.data);
+            };
+        </script>
     </body>
 </html>
