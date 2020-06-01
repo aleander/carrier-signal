@@ -1,7 +1,7 @@
 
 use std::sync::Arc;
 
-use futures::SinkExt;
+use futures::{SinkExt, StreamExt};
 use serde_json::json;
 use tera::{Context, Tera};
 use tokio::sync::watch;
@@ -53,12 +53,14 @@ struct WithTemplate {
     context: Context,
 }
 
-async fn watch_state(mut ws: WebSocket, mut state_channel: watch::Receiver<State>) {
-    loop {
+async fn watch_state(ws: WebSocket, mut state_channel: watch::Receiver<State>) {
+    let (mut tx, mut rx) = ws.split();
+
+    while let Some(_) = rx.next().await {
         let state = state_channel.recv().await;
 
         let result = match state {
-            Some(state) => ws.send(Message::text(json!(state).to_string())).await,
+            Some(state) => tx.send(Message::text(json!(state).to_string())).await,
             None => break
         };
 

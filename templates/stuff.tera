@@ -19,6 +19,7 @@
 
             ws.onopen = function() {
                 console.log("Connected");
+                ws.send("MOAR");
             }
 
             ws.onmessage = function(e) {
@@ -33,6 +34,7 @@
                     li.innerText = `${ob.name} @ ${ob.x}, ${ob.y}`;
                     ul.append(li);
                 }
+                ws.send("MOAR");
             };
         </script>
     </body>
