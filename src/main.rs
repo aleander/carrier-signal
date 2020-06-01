@@ -1,13 +1,13 @@
 mod simulation;
 mod state;
 
-use std::{convert::Infallible, sync::Arc};
+use std::{sync::Arc};
 
 use futures::SinkExt;
 use serde_json::json;
 use tera::{Context, Tera};
 use tokio::sync::watch;
-use warp::{Filter, ws::{Message, WebSocket}};
+use warp::{Filter, reject::Reject, Rejection, ws::{Message, WebSocket}};
 
 use simulation::Simulation;
 use state::State;
@@ -73,7 +73,7 @@ async fn watch_state(mut ws: WebSocket, mut state_channel: watch::Receiver<State
 
         let result = match state {
             Some(state) => ws.send(Message::text(json!(state).to_string())).await,
-            None => ws.send(Message::text("Oh...")).await,
+            None => break
         };
 
         if let Err(_) = result {
@@ -82,8 +82,16 @@ async fn watch_state(mut ws: WebSocket, mut state_channel: watch::Receiver<State
     };
 }
 
-async fn get_state(mut channel: watch::Receiver<State>) -> Result<State, Infallible> {
-    Ok(channel.recv().await.unwrap())
+#[derive(Debug)]
+struct SimulationUnavailable;
+
+impl Reject for SimulationUnavailable {}
+
+async fn get_state(mut channel: watch::Receiver<State>) -> Result<State, Rejection> {
+    match channel.recv().await {
+        Some(state) => Ok(state),
+        None => Err(warp::reject::custom(SimulationUnavailable))
+    }
 }
 
 fn render(template: WithTemplate, tera: Arc<Tera>) -> impl warp::Reply {
